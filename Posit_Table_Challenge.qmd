@@ -1,0 +1,103 @@
+---
+title: "Posit Table Challenge"
+format: html
+code-fold: true
+editor: visual
+---
+
+## 2025 Posit Table Challenge
+
+```{r}
+
+library(dplyr)
+library(reactable)
+library(crosstalk)
+library(htmltools)
+
+passes_table <- read.csv("https://raw.githubusercontent.com/aohulme/STAT-6341/refs/heads/main/passes_table.csv")
+
+## color bars
+color_bar_style <- function(values, color) {
+  max_val <- max(values[values > 0], na.rm = TRUE) #scale only by positive values
+  function(value) {
+    if (is.na(value) || value <= 0) {
+      list()
+    } else {
+      width <- (value / max_val) * 100
+      list(
+        background = paste0(
+          "linear-gradient(to right, ", color, " ", width, "%, transparent ", width, "%)"
+        )
+      )
+    }
+  }
+}
+
+
+## creating dropdown menu to select season and team filters
+shared_passes <- SharedData$new(passes_table)
+
+## dropdown filters
+season_filter <- filter_select(
+  id = "season_filter",
+  label = "Select Season:",
+  sharedData = shared_passes,
+  group = ~season
+)
+
+team_filter <- filter_select(
+  id = "team_filter",
+  label = "Select Team:",
+  sharedData = shared_passes,
+  group = ~team
+)
+
+## reactable table
+table <- reactable(
+  shared_passes,
+  columns = list(
+    game_id = colDef(name = "Game ID", align = "center", style = list(fontWeight = "bold")),
+    week = colDef(name = "Week", align = "center", style = list(fontWeight = "bold")),
+    season = colDef(name = "Season", align = "center", style = list(fontWeight = "bold")),
+    team = colDef(name = "Team", align = "center", style = list(fontWeight = "bold")),
+    pass_left = colDef("Passes Left\n(Avg Yds)", style = color_bar_style(passes_table$pass_left, "salmon")),
+    pass_middle = colDef("Passes Middle\n(Avg Yds)", style = color_bar_style(passes_table$pass_middle, "salmon")),
+    pass_right = colDef("Passes Right\n(Avg Yds)", style = color_bar_style(passes_table$pass_right, "salmon")),
+    run_left = colDef("Runs Left\n(Avg Yds)", style = color_bar_style(passes_table$run_left, "lightgreen")),
+    run_middle = colDef("Runs Middle\n(Avg Yds)", style = color_bar_style(passes_table$run_middle, "lightgreen")),
+    run_right = colDef("Runs Right\n(Avg Yds)", style = color_bar_style(passes_table$run_right, "lightgreen")),
+    tot_pass_yards = colDef("Total Pass Yards"),
+    ypa = colDef("Avg Yards/Pass", style = color_bar_style(passes_table$ypa, "lightblue")),
+    total_int = colDef("Interceptions"),
+    total_sacks = colDef("Sacks"),
+    total_punts = colDef("Punts"),
+    opponent = colDef("Opponent"),
+    point_diff = colDef("Point Differential\n(Team - Opp)", 
+                        style = function(value) {
+                          list(color = ifelse(value >= 0, "darkgreen", "firebrick"), fontWeight = "bold")
+                        }),
+    Winner = colDef("Winner", html = TRUE, align = "center")
+  ),
+  defaultColDef = colDef(headerStyle = list(whiteSpace = "normal"), minWidth = 120),
+  style = list(tableLayout = "fixed"),
+  defaultPageSize = 10,
+  showPageSizeOptions = TRUE,
+  pageSizeOptions = c(10, 20),
+  highlight = TRUE,
+  bordered = TRUE,
+  striped = TRUE,
+  searchable = TRUE
+)
+
+## displaying filters with table
+htmltools::browsable(
+  tagList(
+    tags$h2("Team Passing & Running Stats"),
+    tags$div(style = "display:flex; gap:20px; margin-bottom:15px;",
+             season_filter, team_filter),
+    table
+  )
+)
+
+```
+
